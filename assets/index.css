@@ -1,0 +1,44 @@
+body { word-wrap: break-word; margin: 0.5em; }
+h1:before { color: chocolate; content: "/ "; }
+h2:before { color: chocolate; content: "// "; }
+h3:before { color: chocolate; content: "/// "; }
+h4:before { color: chocolate; content: "//// "; }
+h5:before { color: chocolate; content: "///// "; }
+h6:before { color: chocolate; content: "////// "; }
+table { border: 1px solid #CCC; border-collapse: collapse; margin-bottom: 20px; }
+th {
+    border: 1px solid #CCC;
+    background-color: aliceblue;
+    white-space: nowrap;
+    text-align:left;
+    padding: 4px;
+}
+td { border: 1px solid #CCC; padding: 4px; word-break: break-word; }
+a { text-decoration: none; color: #1E74F6; cursor: pointer; }
+a:hover { color: #BA6907; }
+pre { background: #FFF; border: 1px solid #FCDC81; padding: 4px; overflow: auto; }
+code { font-family: Consolas, "Fira Mono", "Microsoft Yahei",monospace; font-size: 90%; color:  #FF00D4; }
+#title { font-size: 140%; font-weight: bold; text-align: center; }
+.part { border-top: 1px solid grey; margin-top: 0.6em; }
+#topics:before { color: grey; font-size: 0.7em; content: "CONTENTS"; }
+#topics a { display: block; }
+#content:before { color: grey; font-size: 0.7em; content: "CONTENT"; }
+#sub-articles:before { color: grey; font-size: 0.7em; content: "SUB-ARTICLES"; }
+#sibling-articles:before { color: grey; font-size: 0.7em; content: "SIBLING ARTICLES"; }
+#sub-articles a,
+#sibling-articles a { display: inline-block; margin: 0.5em; }
+#back-to-top {
+    position: fixed;
+    bottom: 1em;
+    right: 1em;
+    display: block;
+    font-size: 0.8em;
+    width: 2.5em;
+    line-height: 2.5em;
+    border-radius: 2em;
+    box-shadow: 0px 0px 6px #000;
+    text-align: center;
+    color: #FFF;
+    background-color: gray;
+}
+#quick { margin-top: 0.8em; text-align: center; font-size: 0.9em; }
