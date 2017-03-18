@@ -15,26 +15,26 @@ var (
 	Port int
 )
 
-// Info system information
-type Info struct {
-	StartAt                   time.Time
-	ServerAddress             string
-	ComputerLocalIP           string
-	RecentRestoredDataAt      string
-	RecentRestoredDataVersion string
-
-	// store error info if no suitable place to store it
-	ErrorInMemory string
-}
+// StartedAt server starting timestamp
+var StartedAt = time.Now()
 
 var (
 	confFile     *os.File
 	dataFilePath string
-	info         Info
 )
 
+// GetHTTPAddress return the address at which HTTP serving
+func GetHTTPAddress() string {
+	return fmt.Sprintf("%s:%d", Host, Port)
+}
+
+// GetDataFolder get folder in which data file placed
+func GetDataFolder() string {
+	return dataFilePath
+}
+
 // SetDataFolder set where to store database file and configuration file
-func SetDataFolder(df string) {
+func SetDataFolder(df string) error {
 	if !strings.HasSuffix(df, "/") {
 		df += "/"
 	}
@@ -44,68 +44,43 @@ func SetDataFolder(df string) {
 	// open configuration file
 	f, err := os.OpenFile(df+"conf.dat", os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
-		info.ErrorInMemory = err.Error()
-		return
+		return err
 	}
 	confFile = f
 
-	// read configuration file
-	b, err := ioutil.ReadAll(f)
+	return nil
+}
+
+// GetLastRestoringTimestamp return timestamp of last data restoring
+func GetLastRestoringTimestamp() (string, error) {
+	b, err := ioutil.ReadAll(confFile)
 	if err != nil {
-		info.RecentRestoredDataAt = err.Error()
+		return "", err
 	}
-	info.RecentRestoredDataAt = string(b)
+	return string(b), nil
 }
 
-// GetDataFilePath return database file path
-func GetDataFilePath() string {
-	return dataFilePath
+// SetLastRestoringTimestamp set last data storing timestamp
+func SetLastRestoringTimestamp() error {
+	if _, err := confFile.Seek(0, 0); err != nil {
+		return err
+	}
+
+	if _, err := confFile.WriteString(time.Now().String()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-// GatherInfo gather system information
-func GatherInfo() Info {
-	if info.StartAt.IsZero() {
-		info.StartAt = time.Now()
-	}
-
-	if info.ServerAddress == "" {
-		info.ServerAddress = fmt.Sprintf("%s:%d", Host, Port)
-	}
-
-	// get local ip
-	ips, err := getLocalIP()
-	if err != nil {
-		info.ComputerLocalIP = err.Error()
-	} else {
-		info.ComputerLocalIP = strings.Join(ips, ", ")
-	}
-
-	return info
-}
-
-// FreshRecentRestoredDataAt set RecentRestoredDataAt to current time
-func FreshRecentRestoredDataAt() {
-	info.RecentRestoredDataAt = time.Now().String()
-
-	if confFile != nil {
-		if _, err := confFile.Seek(0, 0); err != nil {
-			info.ErrorInMemory = err.Error()
-			return
-		}
-
-		if _, err := confFile.WriteString(info.RecentRestoredDataAt); err != nil {
-			info.ErrorInMemory = err.Error()
-		}
-	}
-}
-
-// get local IPs
-func getLocalIP() (ips []string, e error) {
+// GetComputerLocalIP return computer local ip
+func GetComputerLocalIP() ([]string, error) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		return nil, err
 	}
 
+	var ips []string
 	for _, addr := range addrs {
 		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
@@ -114,5 +89,5 @@ func getLocalIP() (ips []string, e error) {
 		}
 	}
 
-	return
+	return ips, nil
 }

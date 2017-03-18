@@ -4,27 +4,43 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/boltdb/bolt"
 	"github.com/simpleelegant/notes/conf"
 	"github.com/simpleelegant/notes/models"
 )
 
+// Debug store internal error
+var Debug interface{}
+
 // Settings resource
 type Settings struct{}
 
 // Get get settings & system information
 func (*Settings) Get(w http.ResponseWriter, r *http.Request) {
-	i := conf.GatherInfo()
 	info := map[string]interface{}{
-		"server started at":            i.StartAt.String(),
-		"server listening at":          i.ServerAddress,
-		"server local ip":              i.ComputerLocalIP,
-		"recent restored data at":      i.RecentRestoredDataAt,
-		"recent restored data version": "unsupported",
+		"started at":   conf.StartedAt,
+		"serving at":   conf.GetHTTPAddress(),
+		"data version": "(unsupported now)",
 	}
-	if i.ErrorInMemory != "" {
-		info["error in memory"] = i.ErrorInMemory
+
+	ips, err := conf.GetComputerLocalIP()
+	if err != nil {
+		info["local IP"] = err.Error()
+	} else {
+		info["local IP"] = strings.Join(ips, ", ")
+	}
+
+	t, err := conf.GetLastRestoringTimestamp()
+	if err != nil {
+		info["last data restoring"] = err.Error()
+	} else {
+		info["last data restoring"] = t
+	}
+
+	if Debug != nil {
+		info["debug"] = Debug
 	}
 
 	reply(w, http.StatusOK, map[string]interface{}{
@@ -41,7 +57,7 @@ func (*Settings) Restore(w http.ResponseWriter, r *http.Request) {
 
 	f, _, err := r.FormFile("file")
 	if err != nil {
-		replyInfo(w, r, err.Error())
+		replyInfo(w, r, err)
 		return
 	}
 	defer f.Close()
@@ -51,14 +67,14 @@ func (*Settings) Restore(w http.ResponseWriter, r *http.Request) {
 	{
 		tf, err := os.Create(tfn)
 		if err != nil {
-			replyInfo(w, r, err.Error())
+			replyInfo(w, r, err)
 			return
 		}
 		defer os.Remove(tfn)
 		defer tf.Close()
 
 		if _, err := io.Copy(tf, f); err != nil {
-			replyInfo(w, r, err.Error())
+			replyInfo(w, r, err)
 			return
 		}
 		tf.Close()
@@ -67,25 +83,28 @@ func (*Settings) Restore(w http.ResponseWriter, r *http.Request) {
 	// open file by boltdb
 	db, err := bolt.Open(tfn, 0600, nil)
 	if err != nil {
-		replyInfo(w, r, err.Error())
+		replyInfo(w, r, err)
 		return
 	}
 
 	// checking
 	a := (*models.Article)(nil)
 	if err := a.CheckCollection(db); err != nil {
-		replyInfo(w, r, err.Error())
+		replyInfo(w, r, err)
 		return
 	}
 
 	// really restore
 	if err := a.Restore(db); err != nil {
-		replyInfo(w, r, err.Error())
+		replyInfo(w, r, err)
 		return
 	}
 
 	// record this operation
-	conf.FreshRecentRestoredDataAt()
+	if err := conf.SetLastRestoringTimestamp(); err != nil {
+		replyInfo(w, r, err)
+		return
+	}
 
 	replyInfo(w, r, "Successfully restored.")
 }

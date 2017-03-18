@@ -4,24 +4,28 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         <meta name="robots" content="noindex, nofollow">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title> search - notes</title>
+        <title>search - notes</title>
         <link rel="icon" type="image/x-icon" href="./favicon.ico" />
         <link rel="shortcut icon" type="image/x-icon" href="./favicon.ico" />
         <link href="./normalize.css" rel="stylesheet" />
-        <script type="text/javascript" src="./jquery-3.1.1.min.js"></script>
+        <script type="text/javascript" src="./jquery-3.2.0.min.js"></script>
         <script type="text/javascript" src="./index.js"></script>
+		<style type="text/css" media="all">
+body { margin: 0.4em; }
+form { text-align: center; margin: 1em; }
+input[type="text"] { text-align: center; padding: 0.4em; line-height: 1em; }
+#result a { display: inline-block; padding: 0.5em; }
+		</style>
     </head>
 
-    <body>        <div class="search-panel">
-            <form action="" method="post">
-                <div>
-                    <input type="text" name="title" placeholder="title" />
-                    <br>
-                    <br>
-                    <input type="submit" value="Search" />
-                </div>
-            </form>
-            <div class="result"></div>
-        </div>
+    <body>
+        <a href="./index.html">notes</a>
+		<form action="" method="post">
+			<div>
+				<p><input type="text" name="title" placeholder="title" /></p>
+				<input type="submit" value="Search" />
+			</div>
+		</form>
+		<div id="result"></div>
     </body>
 </html>

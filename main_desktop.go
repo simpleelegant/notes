@@ -3,7 +3,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -15,7 +14,7 @@ import (
 
 func init() {
 	host := flag.String("host", "127.0.0.1", "server host")
-	port := flag.Int("port", 8080, "server port")
+	port := flag.Int("port", 9030, "server port")
 
 	// print usage
 	fmt.Println("----------------------------------------")
@@ -26,10 +25,9 @@ func init() {
 
 	conf.Host = *host
 	conf.Port = *port
-	conf.SetDataFolder(".")
 
-	if info := conf.GatherInfo(); info.ErrorInMemory != "" {
-		exit(errors.New(info.ErrorInMemory))
+	if err := conf.SetDataFolder("."); err != nil {
+		exit(err)
 	}
 }
 
@@ -40,13 +38,13 @@ func exit(err error) {
 
 func main() {
 	// init models
-	if err := models.Init(conf.GetDataFilePath()); err != nil {
+	if err := models.Init(conf.GetDataFolder()); err != nil {
 		exit(err)
 	}
 
 	registerRoutes(http.FileServer(http.Dir("./")))
 
-	addr := conf.GatherInfo().ServerAddress
+	addr := conf.GetHTTPAddress()
 	fmt.Printf("Listening and serving HTTP on %s\n", addr)
 
 	// Start the web server

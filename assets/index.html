@@ -9,8 +9,8 @@
         <link rel="shortcut icon" type="image/x-icon" href="./favicon.ico" />
         <link href="./normalize.css" rel="stylesheet" />
         <link href="./highlight/styles/tomorrow.css" rel="stylesheet" />
-        <link href="./default.css" rel="stylesheet" />
-        <script type="text/javascript" src="./jquery-3.1.1.min.js"></script>
+        <link href="./index.css" rel="stylesheet" />
+        <script type="text/javascript" src="./jquery-3.2.0.min.js"></script>
         <script type="text/javascript" src="./highlight/highlight.pack.js"></script>
         <script type="text/javascript">/* prevent hljs.initHighlightingOnLoad() */ hljs.configure({languages:[]});</script>
         <script type="text/javascript" src="./index.js"></script>
@@ -18,15 +18,19 @@
 
     <body>
         <div id="title"></div>
-        <div class="quick">
+        <div id="quick">
             <a href="#sub-articles">Sub-articles</a>
+			·
             <a href="#sibling">Sibling Articles</a>
+			·
             <a href="./help.html">Help</a>
+			·
+            <a href="./search.html">Search</a>
         </div>
         <div class="part" id="topics"></div>
         <div class="part" id="content"></div>
         <div class="part" id="sub-articles"><div></div></div>
         <div class="part" id="sibling-articles"><div></div></div>
-        <a class="back-to-top" href="#title">Top</a>
+        <a id="back-to-top" href="#title">Top</a>
     </body>
 </html>

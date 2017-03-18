@@ -50,7 +50,7 @@ var tmpl = `<!DOCTYPE html>
 `
 
 // reply a simple information page
-func replyInfo(w http.ResponseWriter, r *http.Request, info string) {
+func replyInfo(w http.ResponseWriter, r *http.Request, info interface{}) {
 	ref := r.Header.Get("Referer")
 	if ref == "" {
 		ref = "/"
