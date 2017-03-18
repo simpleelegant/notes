@@ -1,3 +1,3 @@
 # notes-android
 
-a portable wiki system can run at Android.
+a portable wiki system can run on Android.
