@@ -73,21 +73,18 @@ window.A = {
             document.title = a.title + ' - notes';
 
             $('#title').text(a.title);
-            $('#content').html(a.content_in_html);
-            $('pre code').each(function(i, block) {
-                // highlight on code block
-                hljs.highlightBlock(block);
-            });
+            $('#content > div').html(a.content_in_html);
+            $('pre code').each(function(i, block) { hljs.highlightBlock(block); /* highlight on code block */ });
 
             // render super article link
             if (a.parent_id) {
-                $('.super').text('super: '+a.super_article_title).data('id', a.parent_id);
+                $('#super-article').text(a.super_article_title).attr('data-id', a.parent_id);
             } else {
-                $article.find('.super').text('').data('id', '');
+                $('#super-article').text('').attr('data-id', '');
             }
 
             // render sub-article list
-            var $subArticles = $article.find('.sub-articles div').empty();
+            var $subArticles = $('#sub-articles > div').empty();
             if (a.sub_articles && a.sub_articles.length) {
                 a.sub_articles.forEach(function(a) {
                     $('<a onclick="A.clickArticleLink(this);"></a>').text(a.title).attr('data-id', a.id).appendTo($subArticles);
@@ -97,7 +94,7 @@ window.A = {
             }
 
             // render sibling article list
-            var $sibling = $article.find('.sibling-articles div').empty();
+            var $sibling = $('#sibling-articles > div').empty();
             if (a.sibling_articles && a.sibling_articles.length) {
                 a.sibling_articles.forEach(function(b) {
                     if (b.id === a.id) { return; }
@@ -108,7 +105,7 @@ window.A = {
             }
 
             // make TOC
-            A.makeTOC($article.find('.content'), $article.find('.topics'));
+            A.makeTOC($('#content > div'), $('#topics > div'));
         });
     },
 
@@ -117,7 +114,7 @@ window.A = {
     },
 
     clickArticleLink: function(a) {
-        A.loadArticle($(a).data('id'));
+        A.loadArticle($(a).attr('data-id'));
     },
 
     makeTOC: function($articleContentElement, $tocElement) {
@@ -127,52 +124,8 @@ window.A = {
             $(this).attr('id', 'h-' + i); // add "id" attribute
             $('<a style="margin-left:' + (this.tagName.charAt(1) - 1) + 'em;" href="#h-' + i + '"></a>').text(this.innerText).appendTo($tocElement);
         });
-    },
-
-    submitSearchForm: function() {
-        var title = $(this).find('input[name="title"]').val().trim(),
-            $result = $('.search-panel .result').empty();
-        if (title.length < 2) {
-            $result.append('<p style="text-align:center">accept at least 2 characters.</p>');
-        } else {
-            A.request('GET', '/articles/search', { title: title }, function(data) {
-                if (!Array.isArray(data) || data.length === 0) {
-                    $result.append('<p style="text-align:center">no result of searching.</p>');
-                    return;
-                }
-                $result.append('<p>result:</p>');
-                data.forEach(function(a) {
-                    $('<a onclick="A.clickArticleLink(this);"></a>').text(a.title).attr('data-id', a.id).appendTo($result);
-                });
-            });
-        }
-
-        return false;
-    },
-
-    submitQuickSearchForm: function() {
-        var $input = $(this).find('input'),
-            $sp = $('.search-panel');
-
-        $('.article').hide();
-        $sp.find('input[name="title"]').val($input.val());
-        $sp.show();
-        $sp.find('form').submit();
-        $input.val('');
-        
-        return false;
     }
 };
-
-$(function() {
-    // work in conjunction with history.pushSate()
-    window.onpopstate = function() { A.loadArticleByURL(); };
-
-    A.loadArticleByURL();
-
-    // for search form
-    $('.search-panel form').submit(A.submitSearchForm);
-});
 
 /*
 // view model

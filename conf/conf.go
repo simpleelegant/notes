@@ -53,6 +53,9 @@ func SetDataFolder(df string) error {
 
 // GetLastRestoringTimestamp return timestamp of last data restoring
 func GetLastRestoringTimestamp() (string, error) {
+	if _, err := confFile.Seek(0, 0); err != nil {
+		return "", err
+	}
 	b, err := ioutil.ReadAll(confFile)
 	if err != nil {
 		return "", err
