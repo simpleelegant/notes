@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
-	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
@@ -106,14 +106,16 @@ func (c *logic) startHTTPServer() {
 		return
 	}
 
-	registerRoutes(new(assetsHandler))
+	registerRoutes(&assetsHandler{modTime: time.Now()})
 
 	addr := conf.GetHTTPAddress()
 
 	tmpl := `%s
 serving at http://%s/
 Open this url by a web browser to use it.`
-	c.setScreenText(fmt.Sprintf(tmpl, conf.StartedAt, addr))
+	c.setScreenText(fmt.Sprintf(tmpl,
+		conf.StartedAt.Format("2006-01-02 15:04:05 -0700 MST"),
+		addr))
 
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
@@ -160,9 +162,11 @@ func (c *logic) setScreenText(s string) {
 	c.a.Send(paint.Event{})
 }
 
-type assetsHandler struct{}
+type assetsHandler struct {
+	modTime time.Time
+}
 
-func (*assetsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *assetsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	a := strings.TrimPrefix(r.URL.Path, "/assets/")
 	if a == "" {
 		a = "index.html"
@@ -174,22 +178,16 @@ func (*assetsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	defer f.Close()
 
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		w.Write([]byte(err.Error()))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Write(b)
-	w.WriteHeader(http.StatusOK)
+	http.ServeContent(w, r, a, h.modTime, f)
 }
 
 func main() {
 	a := &logic{fontSize: 40}
 
 	// config
+	//conf.Host = "0.0.0.0"
 	conf.Host = "127.0.0.1"
 	conf.Port = 9030
 	// there assumes its Android package-name is "yujian.notes"

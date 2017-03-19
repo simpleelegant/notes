@@ -68,8 +68,8 @@ func SetLastRestoringTimestamp() error {
 	if _, err := confFile.Seek(0, 0); err != nil {
 		return err
 	}
-
-	if _, err := confFile.WriteString(time.Now().String()); err != nil {
+	_, err := confFile.WriteString(time.Now().Format("2006-01-02 15:04:05 -0700 MST"))
+	if err != nil {
 		return err
 	}
 

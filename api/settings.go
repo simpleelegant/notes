@@ -20,7 +20,7 @@ type Settings struct{}
 // Get get settings & system information
 func (*Settings) Get(w http.ResponseWriter, r *http.Request) {
 	info := map[string]interface{}{
-		"started at":   conf.StartedAt,
+		"started at":   conf.StartedAt.Format("2006-01-02 15:04:05 -0700 MST"),
 		"serving at":   conf.GetHTTPAddress(),
 		"data version": "(unsupported now)",
 	}
