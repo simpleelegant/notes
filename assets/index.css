@@ -36,7 +36,7 @@ code { font-family: Consolas, "Fira Mono", "Microsoft Yahei",monospace; font-siz
     width: 2.5em;
     line-height: 2.5em;
     border-radius: 2em;
-    box-shadow: 0px 0px 6px #000;
+    box-shadow: 0px 0px 4px #000;
     text-align: center;
     color: #FFF;
     background-color: gray;
