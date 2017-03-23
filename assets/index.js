@@ -61,6 +61,8 @@ window.A = {
 	},
 
     loadArticle: function(id, dontPushURL) {
+	$('body').scrollTop(0);
+	    
         this.getArticle(id, true, true, true, true, function(a) {
             A.article = a;
 
