@@ -47,6 +47,14 @@ window.A = {
             success,
             fail);
     },
+	
+	updateArticle: function(data, success) {
+		this.request('POST', '/articles/update', data, success);
+	},
+
+	deleteArticle: function(id, success) {
+		this.request('POST', '/articles/delete', { id: id }, success);
+	},
 
     searchArticles: function(title, success) {
         this.request('GET', '/articles/search', { title: title }, success);
