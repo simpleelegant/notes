@@ -41,12 +41,15 @@ window.A = {
     // subling = with subling articles (just id & title)
     // html = render article content in HTML 
     getArticle: function(id, sup, sub, subling, html, success, fail) {
-        this.request('GET',
-            '/articles/get',
+        this.request('GET', '/articles/get',
             { id: id, sup: sup, sub: sub, subling: subling, html: html },
-            success,
-            fail);
+            success, fail);
     },
+
+	createArticle: function(parent_id, title, content, success) {
+		this.request('POST', '/articles/create',
+		     { parent_id: parent_id, title: title, content: content }, success);
+	},
 	
 	updateArticle: function(data, success) {
 		this.request('POST', '/articles/update', data, success);
@@ -140,46 +143,6 @@ window.A = {
 /*
 // view model
 var vm = {
-    addDoc: function() {
-        if (!confirm('Add Sub-article?')) {
-            return;
-        }
-
-        A.request('POST', '/articles/create', {
-            parentID: this.id(),
-            title: 'New Article',
-            content: ''
-        }, function(data) {
-            vm.superDoc({ id: vm.id(), title: vm.title() });
-
-            vm.id(data.id)
-                .parentID(data.parentID)
-                .title(data.title)
-                .content(data.content)
-				.contentMD5(data.contentMD5)
-				.diagramMD5(data.diagramMD5);
-
-            vm.subDocs([]).getSiblingDocs();
-
-            // refresh location
-            if (history.pushState) {
-                history.pushState(null, '', location.pathname + '?id=' + data.id);
-            }
-
-            vm.viewMode(false).diagramMode(false).editContentMode(true);
-        });
-    },
-
-    deleteDoc: function() {
-        if (prompt('enter DELETE to sure:', '') !== 'DELETE') {
-            return;
-        }
-
-        A.request('POST', '/articles/delete', { id: this.id() }, function(data) {
-            vm.loadDoc(vm.parentID(), true);
-        });
-    },
-
     setParentID: function() {
         var parentID = prompt('Specify new parent article by id:', '');
         if (!parentID) { return; }
