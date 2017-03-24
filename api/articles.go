@@ -208,8 +208,5 @@ func (*Articles) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.CalculateMD5()
-	a.ConvertContentToHTML()
-
-	reply(w, http.StatusOK, a)
+	reply(w, http.StatusOK, "ok")
 }
