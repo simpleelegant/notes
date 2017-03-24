@@ -27,6 +27,23 @@ $(function() {
         $('input[name="title"]').val(A.article.title);
         $('textarea').val(A.article.content);
     });
+	
+	$('#add-article').click(function() {
+        if (!confirm('Add Sub-article?')) { return; }
+
+        A.createArticle(A.article.id, 'New Article', '', function(data) {
+           A.loadArticle(data.id); 
+        }); 
+    }); 
+
+    $('#delete').click(function() {
+        if (prompt('enter DELETE to sure:', '') !== 'DELETE') { return; }
+
+        A.deleteArticle(A.article.id, function(data) {
+           A.loadArticle(A.article.parent_id);
+        });
+    });
+
 
     $('#edit-panel form').submit(function() {
         var title = $('input[name="title"]').val().trim(),
@@ -70,7 +87,11 @@ $(function() {
 			·
             <a href="#sibling-articles">Sibling Articles</a>
 			·
+		<a id="add-article">Add Sub-article</a>
+			·
 		<a id="edit">Edit</a>
+			·
+		<a id="delete">Delete</a>
 			·
             <a href="./help.html">Help</a>
 			·
