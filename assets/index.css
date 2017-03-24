@@ -42,3 +42,7 @@ code { font-family: Consolas, "Fira Mono", "Microsoft Yahei",monospace; font-siz
     background-color: gray;
 }
 #quick { margin-top: 0.8em; text-align: center; font-size: 0.8em; }
+
+#edit-panel { display: none; }
+#edit-panel input[type="text"],
+#edit-panel textarea { width: 100%; }
