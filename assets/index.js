@@ -69,8 +69,6 @@ window.A = {
 	},
 
     loadArticle: function(id, dontPushURL) {
-	$('body').scrollTop(0);
-	    
         this.getArticle(id, true, true, true, true, function(a) {
             A.article = a;
 
@@ -124,6 +122,8 @@ window.A = {
     },
 
     clickArticleLink: function(a) {
+	$('body').scrollTop(0);
+	    
         A.loadArticle($(a).attr('data-id'));
     },
 
@@ -213,15 +213,6 @@ var vm = {
         });
     },
 
-	cancelEditContent: function() {
-		A.getMD5(vm.content(), function(md5) {
-			if (md5 === vm.contentMD5() || confirm('Article content was changed. Cancel?')) {
-				vm.editContentMode(false);
-				vm.loadDoc(vm.id(), false);
-			}
-		});
-	},
-
 	cancelEditDiagram: function() {
 		A.getMD5(vm.diagram(), function(md5) {
 			if (md5 === vm.diagramMD5() || confirm('Diagram was changed. Cancel?')) {
@@ -231,12 +222,6 @@ var vm = {
 			}
 		});
 	},
-
-    delayClearSearching: function() {
-        setTimeout(function() {
-            vm.searchPattern('').searchResult([]);
-        }, 400);
-    },
 
     showTips: function(tips) {
         var $tips = $('.bottom-tips');
