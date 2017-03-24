@@ -20,17 +20,57 @@ $(function() {
 	window.onpopstate = function() { A.loadArticleByURL(); };
 
 	A.loadArticleByURL();
+	
+	    $('#edit').click(function() {
+        $('#show-panel').hide();
+        $('#edit-panel').show();
+        $('input[name="title"]').val(A.article.title);
+        $('textarea').val(A.article.content);
+    });
+
+    $('#edit-panel form').submit(function() {
+        var title = $('input[name="title"]').val().trim(),
+            content = $('textarea').val();
+
+        if (!title) { alert('Please enter the title.'); return false; }
+
+        A.updateArticle({
+            id: A.article.id,
+            title: title,
+            content: content,
+            before_content_md5: A.article.content_md5
+        }, function(data) {
+            A.loadArticle(A.article.id, true);
+
+        $('#edit-panel').hide();
+        $('#show-panel').show();
+        });
+
+        return false;
+    });
+
+    $('#edit-panel .cancel').click(function() {
+       A.getMD5($('textarea').val(), function(md5) {
+           if (md5 === A.article.content_md5 || confirm('Content was changed. Cancel?')) {
+               $('#edit-panel').hide();
+               $('#show-panel').show();
+           }
+       });
+    });
 });
 		</script>
     </head>
 
     <body>
+	    <div id="show-panel">
 		<p><a id="super-article" onclick="A.clickArticleLink(this);"></a></p>
         <div id="title"></div>
         <div id="quick">
             <a href="#sub-articles">Sub-articles</a>
 			·
             <a href="#sibling-articles">Sibling Articles</a>
+			·
+		<a id="edit">Edit</a>
 			·
             <a href="./help.html">Help</a>
 			·
@@ -41,5 +81,13 @@ $(function() {
         <div class="part" id="sub-articles"><div></div></div>
         <div class="part" id="sibling-articles"><div></div></div>
         <a id="back-to-top" href="#super-article">Top</a>
+		    </div>
+	            <div id="edit-panel">
+            <form action="" method="post">
+                <p><input type="text" name="title" placeholder="Article Title" /></p>
+                <p><textarea name="content" rows="24" cols="40" placeholder="Article Content"></textarea></p>
+                <p><input type="submit" value="Save" /> or <a class="cancel">Cancel</a></p>
+            </form>
+        </div>
     </body>
 </html>
