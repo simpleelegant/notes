@@ -28,8 +28,6 @@ func (*Articles) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.CalculateMD5()
-
 	reply(w, http.StatusOK, a)
 }
 
