@@ -36,10 +36,17 @@ th, td { border: 1px solid grey; }
         <p>Author: Wang Yujian &lt;simpleelegant@163.com&gt;</p>
         <h3>System Information</h3>
         <table class="info"></table>
+        <div class="management" style="background-color:aquamarine">
+            <h4>Export:</h4>
+            <form action="/settings/export" method="post">
+                <div>
+                    <input type="submit" value="Export Now" />
+                </div>
+            </form>
+        </div>
         <div class="management">
             <h4>Restore data:</h4>
             <p>Warning: All existed data will replaced.</p>
-            
             <form action="/settings/restore" method="post" enctype="multipart/form-data">
                 <div>
                     <input type="file" name="file" />

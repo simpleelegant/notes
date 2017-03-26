@@ -1,6 +1,10 @@
 package models
 
-import "github.com/boltdb/bolt"
+import (
+	"io"
+
+	"github.com/boltdb/bolt"
+)
 
 var db *bolt.DB
 
@@ -14,4 +18,12 @@ func Init(dbFile string) error {
 	}
 
 	return (*Article)(nil).initCollection()
+}
+
+func WriteTo(w io.Writer) error {
+	return db.View(func(tx *bolt.Tx) error {
+		_, err := tx.WriteTo(w)
+
+		return err
+	})
 }

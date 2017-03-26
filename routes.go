@@ -23,4 +23,5 @@ func registerRoutes(assetsHandler http.Handler) {
 	s := new(api.Settings)
 	http.HandleFunc("/settings/get", s.Get)
 	http.HandleFunc("/settings/restore", s.Restore)
+	http.HandleFunc("/settings/export", s.Export)
 }

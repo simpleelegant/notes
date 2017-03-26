@@ -1,10 +1,12 @@
 package api
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/simpleelegant/notes/conf"
@@ -107,4 +109,21 @@ func (*Settings) Restore(w http.ResponseWriter, r *http.Request) {
 	}
 
 	replyInfo(w, r, "Successfully restored.")
+}
+
+// Export export data
+func (*Settings) Export(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.NotFound(w, r)
+		return
+	}
+
+	fn := fmt.Sprintf("notes.%s.db", time.Now().Format("2006-01-02.15-04-05.-0700.MST"))
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, fn))
+	w.WriteHeader(http.StatusOK)
+	if err := models.WriteTo(w); err != nil {
+		fmt.Println(err)
+	}
 }
