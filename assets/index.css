@@ -18,6 +18,7 @@ a { text-decoration: none; color: #1E74F6; cursor: pointer; }
 a:hover { color: #BA6907; }
 pre { background: #FFF; border: 1px solid #FCDC81; padding: 4px; overflow: auto; }
 code { font-family: Consolas, "Fira Mono", "Microsoft Yahei",monospace; font-size: 90%; color:  #FF00D4; }
+textarea { font-family: "Fira Mono", consolas, Monaco, "Microsoft Yahei", monospace; }
 #title { font-size: 140%; font-weight: bold; text-align: center; }
 .part { border-top: 1px solid grey; margin-top: 0.6em; }
 #topics:before { color: grey; font-size: 0.7em; content: "CONTENTS"; }
