@@ -46,3 +46,11 @@ textarea { font-family: "Fira Mono", consolas, Monaco, "Microsoft Yahei", monosp
 #edit-panel { display: none; }
 #edit-panel input[type="text"],
 #edit-panel textarea { width: 100%; }
+
+/* auto scale */
+@media (min-width: 1000px) {
+    #topics,
+    #sub-articles,
+    #sibling-articles { float: left; width: 20%; }
+    #content { float: right; width: 78%; }
+}
