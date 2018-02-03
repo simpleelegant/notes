@@ -3,127 +3,70 @@ package api
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/simpleelegant/notes/conf"
-	"github.com/simpleelegant/notes/models"
+	"github.com/simpleelegant/notes/resources"
 )
 
-// Debug store internal error
-var Debug interface{}
-
-// Settings resource
-type Settings struct{}
-
-// Get get settings & system information
-func (*Settings) Get(w http.ResponseWriter, r *http.Request) {
-	info := map[string]interface{}{
-		"started at":   conf.StartedAt.Format("2006-01-02 15:04:05 -0700 MST"),
-		"serving at":   conf.GetHTTPAddress(),
-		"data version": "(unsupported now)",
-	}
-
-	ips, err := conf.GetComputerLocalIP()
-	if err != nil {
-		info["local IP"] = err.Error()
-	} else {
-		info["local IP"] = strings.Join(ips, ", ")
-	}
-
-	t, err := conf.GetLastRestoringTimestamp()
-	if err != nil {
-		info["last data restoring"] = err.Error()
-	} else {
-		info["last data restoring"] = t
-	}
-
-	if Debug != nil {
-		info["debug"] = Debug
-	}
-
-	reply(w, http.StatusOK, map[string]interface{}{
-		"info": info,
-	})
-}
-
 // Restore restore data
-func (*Settings) Restore(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.NotFound(w, r)
-		return
-	}
-
-	f, _, err := r.FormFile("file")
-	if err != nil {
-		replyInfo(w, r, err)
-		return
-	}
-	defer f.Close()
-
-	// write to a temporary file
-	tfn := os.TempDir() + "/restore_upload.tmp"
-	{
-		tf, err := os.Create(tfn)
+func Restore(w http.ResponseWriter, r *http.Request) {
+	err := func() error {
+		f, _, err := r.FormFile("file")
 		if err != nil {
-			replyInfo(w, r, err)
-			return
+			return err
 		}
-		defer os.Remove(tfn)
-		defer tf.Close()
+		defer f.Close()
 
-		if _, err := io.Copy(tf, f); err != nil {
-			replyInfo(w, r, err)
-			return
+		// write to a temporary file
+		tfn := os.TempDir() + "/restore_upload.tmp"
+		{
+			tf, err := os.Create(tfn)
+			if err != nil {
+				return err
+			}
+			defer os.Remove(tfn)
+			defer tf.Close()
+
+			if _, err := io.Copy(tf, f); err != nil {
+				return err
+			}
+			tf.Close()
 		}
-		tf.Close()
-	}
 
-	// open file by boltdb
-	db, err := bolt.Open(tfn, 0600, nil)
+		// open file by boltdb
+		db, err := bolt.Open(tfn, 0600, nil)
+		if err != nil {
+			return err
+		}
+
+		// checking
+		if err := resources.CheckArticleCollection(db); err != nil {
+			return err
+		}
+
+		// really restore
+		return resources.RestoreArticlesFrom(db)
+	}()
 	if err != nil {
-		replyInfo(w, r, err)
+		replyInfo(w, err)
 		return
 	}
 
-	// checking
-	a := (*models.Article)(nil)
-	if err := a.CheckCollection(db); err != nil {
-		replyInfo(w, r, err)
-		return
-	}
-
-	// really restore
-	if err := a.Restore(db); err != nil {
-		replyInfo(w, r, err)
-		return
-	}
-
-	// record this operation
-	if err := conf.SetLastRestoringTimestamp(); err != nil {
-		replyInfo(w, r, err)
-		return
-	}
-
-	replyInfo(w, r, "Successfully restored.")
+	replyInfo(w, "Restored success.")
 }
 
 // Export export data
-func (*Settings) Export(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.NotFound(w, r)
-		return
-	}
-
-	fn := fmt.Sprintf("notes.%s.db", time.Now().Format("2006-01-02.15-04-05.-0700.MST"))
-
+func Export(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, fn))
+	w.Header().Set("Content-Disposition",
+		fmt.Sprintf(`attachment; filename="notes.%s.db"`,
+			time.Now().Format("2006-01-02.15_04_05.000Z")))
 	w.WriteHeader(http.StatusOK)
-	if err := models.WriteTo(w); err != nil {
-		fmt.Println(err)
+	if err := resources.Export(w); err != nil {
+		log.Println(err)
 	}
 }

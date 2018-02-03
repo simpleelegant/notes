@@ -1,10 +1,14 @@
-body { word-wrap: break-word; margin: 0.5em; }
+body { word-wrap: break-word; }
 h1:before { color: chocolate; content: "/ "; }
 h2:before { color: chocolate; content: "// "; }
 h3:before { color: chocolate; content: "/// "; }
 h4:before { color: chocolate; content: "//// "; }
 h5:before { color: chocolate; content: "///// "; }
 h6:before { color: chocolate; content: "////// "; }
+textarea { font-family: monospace, monospace; }
+a { text-decoration: none; }
+pre { background: #FFF; border: 1px solid #FCDC81; padding: 4px; overflow: auto; }
+code { font-family: monospace, monospace; font-size: 90%; color:  #FF00D4; }
 table { border: 1px solid #CCC; border-collapse: collapse; margin-bottom: 20px; }
 th {
     border: 1px solid #CCC;
@@ -14,43 +18,97 @@ th {
     padding: 4px;
 }
 td { border: 1px solid #CCC; padding: 4px; word-break: break-word; }
-a { text-decoration: none; color: #1E74F6; cursor: pointer; }
-a:hover { color: #BA6907; }
-pre { background: #FFF; border: 1px solid #FCDC81; padding: 4px; overflow: auto; }
-code { font-family: Consolas, "Fira Mono", "Microsoft Yahei",monospace; font-size: 90%; color:  #FF00D4; }
-textarea { font-family: "Fira Mono", consolas, Monaco, "Microsoft Yahei", monospace; }
-#title { font-size: 140%; font-weight: bold; text-align: center; }
-.part { border-top: 1px solid grey; margin-top: 0.6em; }
-#topics:before { color: grey; font-size: 0.7em; content: "CONTENTS"; }
-#topics a { display: block; }
-#content:before { color: grey; font-size: 0.7em; content: "CONTENT"; }
-#sub-articles:before { color: grey; font-size: 0.7em; content: "SUB-ARTICLES"; }
-#sibling-articles:before { color: grey; font-size: 0.7em; content: "SIBLING ARTICLES"; }
-#sub-articles a,
-#sibling-articles a { display: inline-block; margin: 0.5em; }
-#back-to-top {
-    position: fixed;
-    bottom: 1em;
-    right: 1em;
-    display: block;
-    font-size: 0.8em;
-    width: 2.5em;
-    line-height: 2.5em;
-    border-radius: 2em;
-    text-align: center;
-    color: #FFF;
-    background-color: rgba(128, 128, 128, 0.77);
+.view .left {
+	background-color: aliceblue;
+	position: fixed;
+	bottom: 0;
+	top: 0;
+	left: 0;
+	width: 300px;
+	overflow: auto;
 }
-#quick { margin-top: 0.8em; text-align: center; font-size: 0.8em; }
-
-#edit-panel { display: none; }
-#edit-panel input[type="text"],
-#edit-panel textarea { width: 100%; }
+.view .left .child { margin-left: 1em; }
+.view .left a {
+	display: block;
+	padding: 2px;
+	color: teal;
+}
+.view .left a:hover { color: tomato; }
+.view .left a.current { color: tomato; }
+.view .right { margin-left: 300px; padding: 10px; position: relative; }
+.view .right .actions { position: absolute; right: 8px; top: 8px;}
+.view .right a.btn {
+	display: inline-block;
+	background-color: violet;
+	margin: 2px;
+	padding: 0 4px;
+	font-size: 94%;
+	font-weight: normal;
+	color: #FFF;
+}
+.view .right a.btn:hover { background-color: yellowgreen; }
+.view .right .title { margin-bottom: 10px; font-size: 150%; }
+.view .right .id { color: #bababa; font-size: 80%; }
+.view .right .diagram-title {
+	margin-top: 40px;
+	font-size: 120%;
+	font-weight: bold;
+}
+.view input[type="text"] {
+	display: block;
+	width: 100%;
+	box-sizing: border-box;
+	margin-bottom: 2px;
+}
+.view textarea { width: 100%; }
+.view .editor a.btn,
+.draw a.btn {
+	color: #4a4a4a;
+	background-color: #EEE;
+	line-height: 1.8;
+	display: inline-block;
+	padding: 0 8px;
+}
+.view .editor a.btn:active,
+.draw a.btn:active {
+	background-color: antiquewhite;
+}
+.draw {
+	width: 300px;
+	position: fixed;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	background-color: #FFFFFFB3;
+}
+.draw textarea { width: 100%; background-color: initial; white-space: pre; }
+.preview { margin-left: 300px; }
+.export-restore {
+	max-width: 500px;
+	margin: auto;
+}
+.export-restore .title {
+	font-weight: bold;
+	margin-top: 50px;
+	margin-bottom: 20px;
+	font-size: 120%;
+}
+.search { margin: 10px; }
+.search a {
+	display: inline-block;
+	margin: 0 10px;
+}
 
 /* auto scale */
-@media (min-width: 1000px) {
-    #topics,
-    #sub-articles,
-    #sibling-articles { float: left; width: 20%; }
-    #content { float: right; width: 78%; }
+@media (max-width: 1200px) {
+	.view .left {
+		position: static;
+		width: auto;
+	}
+	.view .right {
+	margin-left: auto;
+}
+.view .right .actions { position: static; }
+.draw { width: 100%; position: static; }
+.preview { margin-left: auto; }
 }

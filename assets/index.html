@@ -1,114 +1,165 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        <meta name="robots" content="noindex, nofollow">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>notes</title>
-        <link rel="icon" type="image/x-icon" href="./favicon.ico" />
-        <link rel="shortcut icon" type="image/x-icon" href="./favicon.ico" />
-        <link href="./normalize.css" rel="stylesheet" />
-        <link href="./highlight.tomorrow.css" rel="stylesheet" />
-        <link href="./index.css" rel="stylesheet" />
-        <script type="text/javascript" src="./jquery-3.2.0.min.js"></script>
-        <script type="text/javascript" src="./highlight.pack.js"></script>
-        <script type="text/javascript">/* prevent hljs.initHighlightingOnLoad() */ hljs.configure({languages:[]});</script>
-        <script type="text/javascript" src="./index.js"></script>
-		<script type="text/javascript" charset="utf-8">
-$(function() {
-	// work in conjunction with history.pushSate()
-	window.onpopstate = function() { A.loadArticleByURL(); };
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<meta name="robots" content="noindex, nofollow">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>notes</title>
+		<link rel="icon" type="image/x-icon" href="./favicon.ico" />
+		<link rel="shortcut icon" type="image/x-icon" href="./favicon.ico" />
+		<link href="./normalize.css" rel="stylesheet" />
+		<link href="./highlight.tomorrow.css" rel="stylesheet" />
+		<link href="./index.css" rel="stylesheet" />
+		<script type="text/javascript" src="./highlight.pack.js"></script>
+		<script type="text/javascript">/* prevent hljs.initHighlightingOnLoad() */ hljs.configure({languages:[]});</script>
+		<script type="text/javascript" src="./vue.min.js"></script>
+		<!--
+		<script type="text/javascript" src="./vue.js"></script>
+		-->
+		<script type="text/javascript" src="./vue-resource.js"></script>
+	</head>
 
-	A.loadArticleByURL();
-	
-	    $('#edit').click(function() {
-        $('#show-panel').hide();
-        $('#edit-panel').show();
-        $('input[name="title"]').val(A.article.title);
-        $('textarea').val(A.article.content);
-    });
-	
-	$('#add-article').click(function() {
-        if (!confirm('Add Sub-article?')) { return; }
+	<body>
+		<div id="body">
+			<article-view
+			 v-bind:article="article"
+			 v-on:search="page = 'search'"
+			 v-on:export-restore="page = 'export-restore'"
+			 v-if="page === 'article'"></article-view>
+			<search
+				v-on:back="page = 'article'"
+				v-on:update:article="val => load(val)"
+				v-else-if="page === 'search'"></search>
+			<export-restore v-on:back="page = 'article'" v-else></export-restore>
+		</div>
 
-        A.createArticle(A.article.id, 'New Article', '', function(data) {
-           A.loadArticle(data.id); 
-        }); 
-    }); 
-
-    $('#delete').click(function() {
-        if (prompt('enter DELETE to sure:', '') !== 'DELETE') { return; }
-
-        A.deleteArticle(A.article.id, function(data) {
-           A.loadArticle(A.article.parent_id);
-        });
-    });
-
-
-    $('#edit-panel form').submit(function() {
-        var title = $('input[name="title"]').val().trim(),
-            content = $('textarea').val();
-
-        if (!title) { alert('Please enter the title.'); return false; }
-
-        A.updateArticle({
-            id: A.article.id,
-            title: title,
-            content: content,
-            before_content_md5: A.article.content_md5
-        }, function(data) {
-            A.loadArticle(A.article.id, true);
-
-        $('#edit-panel').hide();
-        $('#show-panel').show();
-        });
-
-        return false;
-    });
-
-    $('#edit-panel .cancel').click(function() {
-       A.getMD5($('textarea').val(), function(md5) {
-           if (md5 === A.article.content_md5 || confirm('Content was changed. Cancel?')) {
-               $('#edit-panel').hide();
-               $('#show-panel').show();
-           }
-       });
-    });
-});
+		<script type="x-template" id="article-view">
+<div>
+	<div v-if="drawDiagram">
+		<div class="draw">
+			<textarea v-model="current.diagram" rows="20" cols="30" placeholder="Diagram Editing Area" title="Diagram Editing Area"></textarea>
+			<p>
+				<a href="#" class="btn" v-on:click.prevent="onSaveDiagram">Save</a>
+				<a href="#" class="btn" v-on:click.prevent="onCloseDiagramEditor">Close</a>
+			</p>
+			<p style="float: right;"><a href="./diagram-help.html" target="_blank">See Syntax</a></p>
+		</div>
+		<div v-html="current.diagramSVG" class="preview"></div>
+	</div>
+	<div class="view" v-else>
+		<div class="left">
+			<a href="#" v-if="parent" v-on:click="show(parent.id)">{{ parent.title }}</a>
+			<div v-for="child in childrenOfParent" class="child">
+				<div v-if="child.id === current.id">
+					<a href="#" class="current">{{ current.title }}</a>
+					<div class="child">
+						<a href="#" v-for="cc in childrenOfCurrent" v-on:click="show(cc.id)">{{ cc.title }}</a>
+					</div>
+				</div>
+				<div v-else>
+					<a href="#" v-on:click="show(child.id)">{{ child.title }}</a>
+				</div>
+			</div>
+		</div>
+		<div class="right">
+			<editor v-bind="current" v-on:close="edit = false" v-on:updated="onUpdated" v-if="edit"></editor>
+			<viewer v-bind="current"
+				v-on:moved="onMoved"
+				v-on:edit="edit = true"
+				v-on:deleted="onDeleted"
+				v-on:update:newArticleID="val => newArticleID = val"
+				v-on:draw="drawDiagram = true"
+				v-on:search="onSearch"
+				v-on:export-restore="onExportRestore" v-else></viewer>
+		</div>
+	</div>
+</div>
 		</script>
-    </head>
+		<script type="x-template" id="viewer">
+<div>
+	<div class="title">{{ title }}</div>
+	<div class="id" title="article's id">{{ id }}</div>
+	<div class="actions">
+		<a href="#" class="btn" v-on:click="onEdit">Edit</a>
+		<a href="#" class="btn" v-on:click="onDelete">Delete</a>
+		<a href="#" class="btn" v-on:click="onMove">Move</a>
+		<a href="#" class="btn" v-on:click="onCreate">New Article</a>
+		<a href="#" class="btn" v-on:click="onSearch">Search</a>
+		<a href="#" class="btn" v-on:click="onExportRestore">Export &amp; Restore</a>
+	</div>
+	<div class="content" v-html="html"></div>
+	<div>
+		<div class="diagram-title">▼ Diagram
+			<a href="#" class="btn" v-on:click="onDraw">Draw</a>
+		</div>
+		<p v-if="!diagramSVG" style="color: #b9b9b9;">no diagram</p>
+		<div v-html="diagramSVG"></div>
+	</div>
+</div>
+		</script>
+		<script type="x-template" id="editor">
+<form>
+	<div class="editor">
+		<input type="text" v-model="titleEditable" placeholder="Article Title">
+		<textarea v-model="contentEditable" rows="24" cols="40" placeholder="Article Content"></textarea>
+		<p>
+			<a href="#" class="btn" v-on:click.prevent="onSave">Save</a>
+			<a href="#" class="btn" v-on:click.prevent="onSaveClose">Save &amp; Close</a> or <a href="#" class="btn" v-on:click.prevent="onClose">Close</a>
+		</p>
+		<p style="float: right;">Consult <a href="https://github.com/russross/blackfriday" target="_blank">Blackfriday</a> to see supported syntax.</p>
+	</div>
+</form>
+		</script>
+		<script type="x-template" id="export-restore">
+<div class="export-restore">
+	<p><a href="#" v-on:click="onBack">Back</a></p>
+	<div>
+		<div class="title">Export Data</div>
+		<form action="/export" method="post">
+			<div>
+				<input type="submit" value="Export Now" />
+			</div>
+		</form>
+	</div>
+	<div>
+		<div class="title">Restore Data</div>
+		<p style="color: red;">Warning: All existed data should be replaced.</p>
+		<form action="/restore" method="post" enctype="multipart/form-data">
+			<div>
+				<input type="file" name="file" />
+				<br>
+				<br>
+				<input type="submit" value="Restore" />
+			</div>
+		</form>
+	</div>
+</div>
+		</script>
+		<script type="x-template" id="search">
+<div class="search">
+	<p><a href="#" v-on:click="onBack">Back</a></p>
+	<form v-on:submit="onSubmit">
+		<p>
+			<input type="text" v-model="pattern" placeholder="search title, content">
+			<input type="submit" value="Search" />
+		</p>
+		<p v-if="tips">{{ tips }}</p>
+		<div v-if="titleMatches">
+			<div>Title Matches:</div>
+			<p>
+				<a href="#" v-for="a in titleMatches" v-on:click="load(a.id)">{{ a.title }}</a>
+			</p>
+		</div>
+		<div v-if="contentMatches">
+			<div>Content Matches:</div>
+			<p>
+				<a href="#" v-for="a in contentMatches" v-on:click="load(a.id)">{{ a.title }}</a>
+			</p>
+		</div>
+	</form>
+</div>
+		</script>
 
-    <body>
-	    <div id="show-panel">
-		<p><a id="super-article" onclick="A.clickArticleLink(this);"></a></p>
-        <div id="title"></div>
-        <div id="quick">
-            <a href="#sub-articles">Sub-articles</a>
-			·
-            <a href="#sibling-articles">Sibling Articles</a>
-			·
-		<a id="add-article">Add Sub-article</a>
-			·
-		<a id="edit">Edit</a>
-			·
-		<a id="delete">Delete</a>
-			·
-            <a href="./help.html">Help</a>
-			·
-            <a href="./search.html">Search</a>
-        </div>
-        <div class="part" id="topics"><div></div></div>
-        <div class="part" id="content"><div></div></div>
-        <div class="part" id="sub-articles"><div></div></div>
-        <div class="part" id="sibling-articles"><div></div></div>
-        <a id="back-to-top" href="#super-article">Top</a>
-		    </div>
-	            <div id="edit-panel">
-            <form action="" method="post">
-                <p><input type="text" name="title" placeholder="Article Title" /></p>
-                <p><textarea name="content" rows="24" cols="40" placeholder="Article Content"></textarea></p>
-                <p><input type="submit" value="Save" /> or <a class="cancel">Cancel</a></p>
-            </form>
-        </div>
-    </body>
+		<script type="text/javascript" src="./index.js"></script>
+	</body>
 </html>

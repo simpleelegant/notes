@@ -1,237 +1,257 @@
-// wrap all global variables & functions
-window.A = {
-    parseQueryString: function() {
-        var qs = location.search.length ? location.search.substr(1).split('&') : [],
-            args = {};
-
-        qs.forEach(function(q) {
-            if (q) {
-                var kv = q.split('=');
-                if (kv.length === 2) {
-                    args[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1]);
-                }
-            }
-        });
-
-        return args;
-    },
-
-    request: function (method, url, data, success, fail) {
-        $.ajax({
-            method: method, // 'GET', 'POST', 'PUT', etc.
-            url: url,
-            data: data,
-            success: success,
-            error: function (jqXHR) {
-                if (jqXHR.status === 401) {
-                    alert('authentication come soon');
-                } else if (fail) {
-                    fail(jqXHR.status,jqXHR.statusText,jqXHR.responseJSON,jqXHR.responseText);
-                } else {
-                    alert((jqXHR.responseJSON && jqXHR.responseJSON.message) ? 
-                        jqXHR.responseJSON.message :
-                            (jqXHR.responseText || jqXHR.status+' '+jqXHR.statusText));
-                }
+var viewer = {
+	template: '#viewer',
+	props: ['id', 'title', 'html', 'diagramSVG'],
+	methods: {
+		onEdit: function() { this.$emit('edit') },
+		onDelete: function() {
+			var sure = prompt('enter DELETE to sure:','')
+			if (sure === null) { return }
+			if (sure !== 'DELETE') {
+				alert('unexpected input')
+				return
 			}
-        });
-    },
-
-    // sup = with super article title
-    // sub = with sub-articles (just id & title)
-    // subling = with subling articles (just id & title)
-    // html = render article content in HTML 
-    getArticle: function(id, sup, sub, subling, html, success, fail) {
-        this.request('GET', '/articles/get',
-            { id: id, sup: sup, sub: sub, subling: subling, html: html },
-            success, fail);
-    },
-
-	createArticle: function(parent_id, title, content, success) {
-		this.request('POST', '/articles/create',
-		     { parent_id: parent_id, title: title, content: content }, success);
+			this.$http.post('/articles/delete?id='+this.id)
+				.then(function(data) {
+					this.$emit('deleted')
+				}, function(data) { alert(data.bodyText) })
+		},
+		onMove: function() {
+			var parent = prompt('enter an article id as new parent:','')
+			if (parent === null) { return }
+			if (parent === '') {
+				alert('unexpected input')
+				return
+			}
+			this.$http.post('/articles/update', {
+				id: this.id,
+				parent: parent,
+				uParent: true
+			}, {emulateJSON: true}).then(function(data) {
+					this.$emit('moved')
+				}, function(data) { alert(data.bodyText) })
+		},
+		onCreate: function() {
+			if (!confirm('Create a sub-article?')) { return }
+			this.$http.post('/articles/create', {
+				parent: this.id,
+				title: 'Article Title',
+				content: 'Article Content',
+			}, {emulateJSON: true}).then(function(data) {
+					this.$emit('update:newArticleID', data.body.id)
+				}, function(data) { alert(data.bodyText) })
+		},
+		onDraw: function() { this.$emit('draw') },
+		onSearch: function() { this.$emit('search') },
+		onExportRestore: function() { this.$emit('export-restore') }
 	},
-	
-	updateArticle: function(data, success) {
-		this.request('POST', '/articles/update', data, success);
+	updated: function() {
+		// make highlight at source codes
+		var pre = document.getElementsByTagName('pre')
+		for (var i = pre.length - 1; i >= 0; i--) {
+			var code = pre.item(i).getElementsByTagName('code')
+			if (code.length) {
+				hljs.highlightBlock(code.item(0))
+			}
+		}
+	}
+}
+
+var editor = {
+	template: '#editor',
+	props: ['id', 'title', 'content', 'contentMD5'],
+	data: function() {
+		return {
+			titleEditable: this.title,
+			contentEditable: this.content
+		}
 	},
-
-	deleteArticle: function(id, success) {
-		this.request('POST', '/articles/delete', { id: id }, success);
+	methods: {
+		onClose: function() {
+			this.$http.post('/md5', {data: this.contentEditable}, {emulateJSON: true})
+				.then(function(data) {
+					if (data.body.md5 !== this.contentMD5
+						&& !confirm('content was changed, discard?')) {
+						return
+					}
+					this.$emit('close')
+				}, function(data) { alert(data.bodyText) })
+		},
+		onSave: function() {
+			this.save(false)
+		},
+		onSaveClose: function() {
+			this.save(true)
+		},
+		save: function(close) {
+			this.$http.post('/articles/update', {
+				id: this.id,
+				originalContentMD5: this.contentMD5,
+				title: this.titleEditable,
+				content: this.contentEditable,
+				uTitle: true,
+				uContent: true
+			}, {emulateJSON: true}).then(function(data) {
+				this.$emit('updated')
+				if (close) {
+					this.$emit('close')
+				}
+			}, function(data) { alert(data.bodyText) })
+		}
 	},
+	mounted: function() {
+		document.getElementsByTagName('textarea').item(0).focus()
+	}
+}
 
-    searchArticles: function(title, success) {
-        this.request('GET', '/articles/search', { title: title }, success);
-    },
-
-    renderDiagram: function(source, success, fail) {
-        this.request('POST', '/diagram/render', {source: source}, success, fail);
-    },
-
-	getMD5: function(data, success) {
-		this.request('POST', '/md5', {data: data}, function(data) { success(data.md5); });
+var articleView = {
+	template: '#article-view',
+	props: ['article'],
+	components: {
+		viewer: viewer,
+		editor: editor
 	},
+	data: function() {
+		return {
+			newArticleID: '',
+			edit: false,
+			drawDiagram: false,
+			parent: { id: '', title: '' },
+			childrenOfParent: [],
+			current: {
+				id: '',
+				title: '',
+				content: '',
+				html: '',
+				diagram: '',
+				diagramSVG: '',
+				contentMD5: '',
+				diagramMD5: ''
+			},
+			childrenOfCurrent: []
+		}
+	},
+	methods: {
+		show: function(id) {
+			if (this.edit) {
+				if (!confirm('Discard your editing?')) { return }
+				this.edit = false
+			}
+			this.load(id)
+		},
+		onMoved: function() { this.load(this.current.id) },
+		onUpdated: function() { this.load(this.current.id) },
+		onDeleted: function() { this.load(this.parent.id) },
+		load: function(articleID, edit) {
+			this.$http.get('/articles/get?id='+articleID).then(function(data) {
+				this.current = data.body.current
+				this.parent = data.body.parent
+				this.childrenOfParent = data.body.childrenOfParent ||
+					[{id: this.current.id, title: this.current.title}]
+				this.childrenOfCurrent = data.body.childrenOfCurrent
 
-    loadArticle: function(id, dontPushURL) {
-        this.getArticle(id, true, true, true, true, function(a) {
-            A.article = a;
-
-            // update location bar of browser
-            if (!dontPushURL && history.pushState) {
-                history.pushState(null, '', location.pathname + '?id=' + id);
-            }
-
-            // update title bar of browser
-            document.title = a.title + ' - notes';
-
-            $('#title').text(a.title);
-            $('#content > div').html(a.content_in_html);
-            $('pre code').each(function(i, block) { hljs.highlightBlock(block); /* highlight on code block */ });
-
-            // render super article link
-            if (a.parent_id) {
-                $('#super-article').text(a.super_article_title).attr('data-id', a.parent_id);
-            } else {
-                $('#super-article').text('').attr('data-id', '');
-            }
-
-            // render sub-article list
-            var $subArticles = $('#sub-articles > div').empty();
-            if (a.sub_articles && a.sub_articles.length) {
-                a.sub_articles.forEach(function(a) {
-                    $('<a onclick="A.clickArticleLink(this);"></a>').text(a.title).attr('data-id', a.id).appendTo($subArticles);
-                });
-            } else {
-                $subArticles.append('<p style="text-align: center; color: grey;">no sub-articles.</p>');
-            }
-
-            // render sibling article list
-            var $sibling = $('#sibling-articles > div').empty();
-            if (a.sibling_articles && a.sibling_articles.length) {
-                a.sibling_articles.forEach(function(b) {
-                    if (b.id === a.id) { return; }
-                    $('<a onclick="A.clickArticleLink(this);"></a>').text(b.title).attr('data-id', b.id).appendTo($sibling);
-                });
-            } else {
-                $sibling.append('<p style="text-align: center; color: grey;">no sibling articles.</p>');
-            }
-
-            // make TOC
-            A.makeTOC($('#content > div'), $('#topics > div'));
-        });
-    },
-
-    loadArticleByURL: function() {
-        this.loadArticle(this.parseQueryString().id || '', true);
-    },
-
-    clickArticleLink: function(a) {
-	$('body').scrollTop(0);
-	    
-        A.loadArticle($(a).attr('data-id'));
-    },
-
-    makeTOC: function($articleContentElement, $tocElement) {
-        $tocElement.empty();
-
-        $articleContentElement.find('h1,h2,h3,h4,h5,h6').each(function(i) {
-            $(this).attr('id', 'h-' + i); // add "id" attribute
-            $('<a style="margin-left:' + (this.tagName.charAt(1) - 1) + 'em;" href="#h-' + i + '"></a>').text(this.innerText).appendTo($tocElement);
-        });
-    }
-};
-
-/*
-// view model
-var vm = {
-    setParentID: function() {
-        var parentID = prompt('Specify new parent article by id:', '');
-        if (!parentID) { return; }
-
-        A.request('POST', '/articles/update', { id: this.id(), parentID: parentID }, function(data) {
-            vm.parentID(parentID);
-            vm.getSuperDoc().getSiblingDocs();
-        });
-    },
-
-    saveDiagram: function(success) {
-        var dia = vm.diagram().trim();
-
-        function save() {
-            A.request('POST', '/articles/update', {
-				id: vm.id(),
-				diagram: dia,
-				beforeDiagramMD5: vm.diagramMD5(),
+				if (edit) { this.edit = true }
 			}, function(data) {
-				vm.diagramMD5(data.diagramMD5);
-                if (success) { success(); }
-            });
-        }
-
-        if (dia === '') { save(); return; }
-
-        A.parseDiagram(dia, function(data) {
-            save();
-        }, function(data) {
-            if (confirm('Diagram syntax is invalid, save anyway?')) { save(); }
-        });
-    },
-
-	cancelEditDiagram: function() {
-		A.getMD5(vm.diagram(), function(md5) {
-			if (md5 === vm.diagramMD5() || confirm('Diagram was changed. Cancel?')) {
-				vm.editDiagramMode(false);
-				vm.viewMode(true);
-				vm.loadDoc(vm.id(), false);
-			}
-		});
+				this.error = data.url+': '+data.bodyText
+			})
+		},
+		onCloseDiagramEditor: function() {
+			this.$http.post('/md5', {data: this.current.diagram}, {emulateJSON: true})
+				.then(function(data) {
+					if (data.body.md5 !== this.current.diagramMD5
+						&& !confirm('Diagram was changed, discard?')) {
+						return
+					}
+					this.drawDiagram = false
+					this.load(this.current.id)
+				}, function(data) { alert(data.bodyText) })
+		},
+		onSaveDiagram: function() {
+			this.$http.post('/articles/update', {
+				id: this.current.id,
+				originalDiagramMD5: this.current.diagramMD5,
+				diagram: this.current.diagram,
+				uDiagram: true
+			}, {emulateJSON: true}).then(function(data) {
+				this.load(this.current.id)
+			}, function(data) { alert(data.bodyText) })
+		},
+		onSearch: function() { this.$emit('search') },
+		onExportRestore: function() { this.$emit('export-restore') }
 	},
+	created: function() {
+		this.load(this.article || '')
+		this.$watch('newArticleID', function (newValue, oldValue) {
+			this.load(this.newArticleID, true)
+		})
 
-    showTips: function(tips) {
-        var $tips = $('.bottom-tips');
+		this.$watch('current.diagram', function (newValue, oldValue) {
+			if (!newValue) {
+				this.current.diagramSVG = ''
+				return
+			}
+			this.$http.post('/diagram/render', {source: newValue}, {emulateJSON: true})
+				.then(function(data) {
+					this.current.diagramSVG = data.body.svg
+				}, function(data) {
+					this.current.diagramSVG = data.bodyText
+				})
+		})
+	}
+}
 
-        if (!$tips.length) {
-            $tips = $('<div class="bottom-tips" style="position: fixed; bottom: 0; z-index: 999; background-color: rgba(0, 0, 0, 0.71); color: #fff; padding: 4px 10px; border-radius: 0 8px 0 0; font-size: 120%; left: 0; display: none;"></div>');
-            $tips.appendTo($('body'));
-        }
+var search = {
+	template: '#search',
+	data: function() {
+		return {
+			tips: '',
+			pattern: '',
+			titleMatches: null,
+			contentMatches: null
+		}
+	},
+	methods: {
+		onBack: function() { this.$emit('back') },
+		onSubmit: function() {
+			this.pattern = this.pattern.trim()
+			if (this.pattern === '') { return }
+			this.$http.post('/articles/search', {pattern: this.pattern}, {emulateJSON: true})
+				.then(function(data) {
+					this.titleMatches = data.body.titleMatches
+					this.contentMatches = data.body.contentMatches
+					this.tips = (!this.titleMatches && !this.contentMatches) ? 'No article matched' : ''
+				}, function(data) { alert(data.bodyText) })
+		},
+		load: function(id) { this.$emit('update:article', id) }
+	},
+	mounted: function() {
+		document.getElementsByTagName('input').item(0).focus()
+	}
+}
 
-        $tips.text(tips).fadeIn();
+var exportRestore = {
+	template: '#export-restore',
+	methods: {
+		onBack: function() { this.$emit('back') }
+	}
+}
 
-        return { then: function(callback) { callback($tips); } };
-    }
-};
-
-vm.viewMode.subscribe(function(newValue) {
-    if (newValue) {
-        //setTimeout(function() {
-            $('#bac').find('a').attr('target', '_blank');
-            $('pre code').each(function(i, block) {
-                hljs.highlightBlock(block);
-            });
-            A.generateCatalog('#bac');
-        //}, 400);
-    }
-});
-
-vm.diagram.subscribe(function() {
-    if (vm.updateDiagramTimeout) { return; }
-
-    vm.updateDiagramTimeout = setTimeout(function() {
-        clearTimeout(vm.updateDiagramTimeout);
-        vm.updateDiagramTimeout = null;
-
-        var dia = vm.diagram().trim();
-        if (dia === '') {
-            $('.diagram').empty().append('no diagram.');
-            return;
-        }
-
-        A.parseDiagram(dia, function(data) {
-            $('.diagram').empty().append(data.svg);
-        }, function(data) {
-			$('.diagram').empty().append('diagram error: '+
-				(data.responseJSON && data.responseJSON.message) ? data.responseJSON.message : data.statusText);
-        });
-    }, 1000);
-});
-*/
-
+new Vue({
+	el: '#body',
+	components: {
+		'article-view': articleView,
+		'search': search,
+		'export-restore': exportRestore
+	},
+	data: function() {
+		return {
+			page: 'article',
+			article: ''
+		}
+	},
+	methods: {
+		load: function(article) {
+			this.article = article
+			this.page = 'article'
+		}
+	}
+})

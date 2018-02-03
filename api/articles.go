@@ -3,208 +3,196 @@ package api
 import (
 	"errors"
 	"net/http"
-	"strings"
 
-	"github.com/simpleelegant/notes/models"
+	"github.com/simpleelegant/notes/diagram"
+	"github.com/simpleelegant/notes/resources"
 )
 
-// Articles resource
-type Articles struct{}
-
-// Create create an article
-func (*Articles) Create(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.NotFound(w, r)
-		return
-	}
-
-	a := &models.Article{
-		ParentID: r.FormValue("parent_id"),
-		Title:    r.FormValue("title"),
-		Content:  r.FormValue("content"),
+// CreateArticle create an article
+func CreateArticle(r *http.Request) (int, interface{}) {
+	a := &resources.Article{
+		Parent:  formValue(r, "parent"),
+		Title:   formValue(r, "title"),
+		Content: formValue(r, "content"),
 	}
 	if err := a.Create(); err != nil {
-		replyBadRequest(w, err)
-		return
+		return http.StatusBadRequest, err
 	}
-
-	reply(w, http.StatusOK, a)
+	return http.StatusOK, map[string]string{"id": a.ID}
 }
 
-type GetResult struct {
-	*models.Article
-	ContentMD5    string `json:"content_md5"`
-	DiagramMD5    string `json:"diagram_md5"`
-	ContentInHTML string `json:"content_in_html"`
-
-	SuperArticleTitle string `json:"super_article_title"`
-
-	SubArticles     []*models.Article `json:"sub_articles"`
-	SiblingArticles []*models.Article `json:"sibling_articles"`
-}
-
-// Get get an article
-func (*Articles) Get(w http.ResponseWriter, r *http.Request) {
-	a := &models.Article{ID: r.FormValue("id")}
-	if a.ID == "" {
-		a.ID = models.RootArticleID
+// GetArticle get an article
+func GetArticle(r *http.Request) (int, interface{}) {
+	id := formValue(r, "id")
+	if id == "" {
+		id = resources.RootArticleID
 	}
-	err := a.Read()
+	a, err := resources.GetArticle(id)
 	if err != nil {
-		replyBadRequest(w, err)
-		return
+		return http.StatusBadRequest, err
 	}
-
-	re := &GetResult{Article: a}
-	re.ContentMD5, re.DiagramMD5 = a.CalculateMD5()
-
-	// render content in HTML if asked for
-	if r.FormValue("html") != "" {
-		re.ContentInHTML = string(a.ConvertContentToHTML())
-	}
-
-	// get sub-articles if asked for
-	if r.FormValue("sub") != "" {
-		re.SubArticles, err = a.GetSubArticles()
+	contentMD5, diagramMD5 := a.MD5()
+	var diagramSVG string
+	if a.Diagram != "" {
+		out, err := diagram.Parse([]byte(a.Diagram))
 		if err != nil {
-			replyBadRequest(w, err)
-			return
+			diagramSVG = err.Error()
+		} else {
+			diagramSVG = string(out)
 		}
 	}
-
-	if a.ParentID != "" {
-		// get super article if asked for
-		if r.FormValue("sup") != "" {
-			s := &models.Article{ID: a.ParentID}
-			if err := s.Read(); err != nil {
-				replyBadRequest(w, err)
-				return
-			}
-			re.SuperArticleTitle = s.Title
-
-			// get subling articles if asked for
-			if r.FormValue("subling") != "" {
-				re.SiblingArticles, err = s.GetSubArticles()
-				if err != nil {
-					replyBadRequest(w, err)
-					return
-				}
-			}
-		}
+	b := map[string]string{
+		"id":         a.ID,
+		"title":      a.Title,
+		"content":    a.Content,
+		"html":       string(a.ContentHTML()),
+		"diagram":    a.Diagram,
+		"diagramSVG": diagramSVG,
+		"contentMD5": contentMD5,
+		"diagramMD5": diagramMD5,
 	}
 
-	reply(w, http.StatusOK, re)
-}
-
-// Search search articles
-func (*Articles) Search(w http.ResponseWriter, r *http.Request) {
-	s, err := (*models.Article)(nil).SearchByTitle(r.FormValue("title"))
+	// get sub-articles of a
+	subArticles, err := a.GetSubArticles()
 	if err != nil {
-		replyBadRequest(w, err)
-		return
+		return http.StatusBadRequest, err
 	}
 
-	reply(w, http.StatusOK, s)
+	// get parent and subling articles
+	var (
+		parent  *resources.ArticleTitle
+		subling []*resources.ArticleTitle
+	)
+	if a.Parent != "" {
+		p, err := resources.GetArticle(a.Parent)
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+		parent = &resources.ArticleTitle{ID: p.ID, Title: p.Title}
+		subling, err = p.GetSubArticles()
+		if err != nil {
+			return http.StatusBadRequest, err
+		}
+	}
+
+	return http.StatusOK, map[string]interface{}{
+		"parent":            parent,
+		"childrenOfParent":  subling,
+		"current":           b,
+		"childrenOfCurrent": subArticles,
+	}
 }
 
-// Delete delete an articles
-func (*Articles) Delete(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.NotFound(w, r)
-		return
+// SearchArticles search articles
+func SearchArticles(r *http.Request) (int, interface{}) {
+	titleMatches, contentMatches, err := resources.SearchArticles(formValue(r, "pattern"))
+	if err != nil {
+		return http.StatusBadRequest, err
 	}
 
-	a := &models.Article{ID: r.FormValue("id")}
-	if err := a.Read(); err != nil {
-		replyBadRequest(w, err)
-		return
+	return http.StatusOK, map[string]interface{}{
+		"titleMatches":   titleMatches,
+		"contentMatches": contentMatches,
+	}
+}
+
+// DeleteArticle delete an articles
+func DeleteArticle(r *http.Request) (int, interface{}) {
+	a, err := resources.GetArticle(formValue(r, "id"))
+	if err != nil {
+		return http.StatusBadRequest, err
 	}
 
 	// deny to delete root article
-	if a.ID == models.RootArticleID {
-		replyBadRequest(w, errors.New("unable to delete root article"))
-		return
+	if a.ID == resources.RootArticleID {
+		return http.StatusBadRequest, errors.New("unable to delete root article")
 	}
 
 	// deny if has sub-articles
 	subs, err := a.GetSubArticles()
 	if err != nil {
-		replyBadRequest(w, err)
-		return
+		return http.StatusBadRequest, err
 	}
 	if len(subs) != 0 {
-		replyBadRequest(w, errors.New("unable to delete this article, because it has sub-articles"))
-		return
+		return http.StatusBadRequest, errors.New("must delete sub-articles")
 	}
 
 	if err := a.Delete(); err != nil {
-		replyBadRequest(w, err)
-		return
+		return http.StatusBadRequest, err
 	}
 
-	reply(w, http.StatusNoContent, "")
+	return http.StatusOK, ""
 }
 
-// Update update an article
-func (*Articles) Update(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.NotFound(w, r)
-		return
+// UpdateArticle update an article
+func UpdateArticle(r *http.Request) (int, interface{}) {
+	a, err := resources.GetArticle(formValue(r, "id"))
+	if err != nil {
+		return http.StatusBadRequest, err
 	}
+	contentMD5, diagramMD5 := a.MD5()
 
-	a := &models.Article{ID: r.FormValue("id")}
-	if err := a.Read(); err != nil {
-		replyBadRequest(w, err)
-		return
-	}
-
-	contentMD5, diagramMD5 := a.CalculateMD5()
-
-	if v, ok := formValue(r, "title"); ok {
-		a.Title = v
-	}
-	if v, ok := formValue(r, "content"); ok {
-		if r.FormValue("before_content_md5") != contentMD5 {
-			replyBadRequest(w, errors.New("Remote content was changed by another operation."))
-			return
+	var uParent, uTitle, uContent, uDiagram bool
+	{
+		if formValue(r, "uParent") == "true" {
+			uParent = true
 		}
-		a.Content = v
-	}
-	if v, ok := formValue(r, "diagram"); ok {
-		if r.FormValue("before_diagram_md5") != diagramMD5 {
-			replyBadRequest(w, errors.New("Remote diagram was changed by another operation."))
-			return
+		if formValue(r, "uTitle") == "true" {
+			uTitle = true
 		}
-		a.Diagram = v
-	}
-	if v, ok := formValue(r, "parent_id"); ok {
-		v = strings.TrimSpace(v)
-		if v == a.ID {
-			replyBadRequest(w, errors.New("parent article do not equal to current article"))
-			return
+		if formValue(r, "uContent") == "true" {
+			uContent = true
 		}
-
-		// check wanted parent document exists
-		if err := (&models.Article{ID: v}).Read(); err != nil {
-			replyBadRequest(w, err)
-			return
-		}
-
-		yes, err := a.IsAncestorOf(v)
-		if err != nil {
-			replyBadRequest(w, err)
-			return
-		}
-		if yes {
-			replyBadRequest(w, errors.New("specified article has been sub-article of current article"))
-			return
+		if formValue(r, "uDiagram") == "true" {
+			uDiagram = true
 		}
 	}
 
-	if err := a.Update(); err != nil {
-		replyBadRequest(w, err)
-		return
+	if uParent {
+		parent := formValue(r, "parent")
+		if err := checkChangeParent(a, parent); err != nil {
+			return http.StatusBadRequest, err
+		}
+		a.Parent = parent
+	}
+	if uTitle {
+		a.Title = formValue(r, "title")
+	}
+	if uContent {
+		if formValue(r, "originalContentMD5") != contentMD5 {
+			return http.StatusBadRequest,
+				errors.New("content was changed by another operation")
+		}
+		a.Content = formValue(r, "content")
+	}
+	if uDiagram {
+		if formValue(r, "originalDiagramMD5") != diagramMD5 {
+			return http.StatusBadRequest,
+				errors.New("diagram was changed by another operation.")
+		}
+		a.Diagram = formValue(r, "diagram")
 	}
 
-	reply(w, http.StatusOK, "ok")
+	if err := a.Update(uParent, uTitle, uContent, uDiagram); err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	return http.StatusOK, "updated"
+}
+
+func checkChangeParent(a *resources.Article, parent string) error {
+	if a.ID == parent {
+		return errors.New("parent article cannot equal to current article")
+	}
+	if _, err := resources.GetArticle(parent); err != nil {
+		return err
+	}
+	yes, err := a.IsAncestorOf(parent)
+	if err != nil {
+		return err
+	}
+	if yes {
+		return errors.New("specified article has been sub-article of current article")
+	}
+	return nil
 }

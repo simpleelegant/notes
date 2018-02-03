@@ -1,4 +1,4 @@
-package models
+package resources
 
 import (
 	"io"
@@ -8,22 +8,21 @@ import (
 
 var db *bolt.DB
 
-// Init must be called before any other models' operations
-func Init(dbFile string) error {
-	// open database
+// OpenDatabase must be called before any other models' operations
+func OpenDatabase(dbFile string) error {
 	var err error
 	db, err = bolt.Open(dbFile, 0600, nil)
 	if err != nil {
 		return err
 	}
 
-	return (*Article)(nil).initCollection()
+	return initArticleCollection()
 }
 
-func WriteTo(w io.Writer) error {
+// Export exports all data to w
+func Export(w io.Writer) error {
 	return db.View(func(tx *bolt.Tx) error {
 		_, err := tx.WriteTo(w)
-
 		return err
 	})
 }

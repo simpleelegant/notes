@@ -17,7 +17,7 @@ import (
 	"github.com/simpleelegant/notes/api"
 	"github.com/simpleelegant/notes/conf"
 	"github.com/simpleelegant/notes/mobile"
-	"github.com/simpleelegant/notes/models"
+	"github.com/simpleelegant/notes/resources"
 
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
@@ -100,8 +100,7 @@ func (c *logic) OnTouch(e touch.Event) {}
 func (c *logic) OnOtherEvent(e interface{}) {}
 
 func (c *logic) startHTTPServer() {
-	// init models
-	if err := models.Init(conf.GetDataFolder()); err != nil {
+	if err := resources.OpenDatabase(conf.GetDataFolder()); err != nil {
 		c.setScreenText(err.Error())
 		return
 	}

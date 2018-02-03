@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/simpleelegant/notes/conf"
-	"github.com/simpleelegant/notes/models"
+	"github.com/simpleelegant/notes/resources"
 )
 
 func init() {
@@ -37,8 +37,7 @@ func exit(err error) {
 }
 
 func main() {
-	// init models
-	if err := models.Init(conf.GetDataFolder()); err != nil {
+	if err := resources.OpenDatabase(conf.GetDataFolder()); err != nil {
 		exit(err)
 	}
 
