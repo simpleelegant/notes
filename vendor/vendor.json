@@ -1,0 +1,25 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "sEhq34CIl1YUUdWvQHMmbYcYIoA=",
+			"path": "github.com/ajstarks/svgo",
+			"revision": "644b8db467afccf19a0692a3e31a1868e4287ab8",
+			"revisionTime": "2018-02-26T02:51:33Z"
+		},
+		{
+			"checksumSHA1": "20Pind5XCrfZL/F0oibWfd9gotA=",
+			"path": "github.com/boltdb/bolt",
+			"revision": "fd01fc79c553a8e99d512a07e8e0c63d4a3ccfc5",
+			"revisionTime": "2018-03-02T18:00:52Z"
+		},
+		{
+			"checksumSHA1": "Ne3D+KJs1TU2trnDy1UCSwlXbAE=",
+			"path": "github.com/russross/blackfriday",
+			"revision": "11635eb403ff09dbc3a6b5a007ab5ab09151c229",
+			"revisionTime": "2018-04-28T10:25:19Z"
+		}
+	],
+	"rootPath": "github.com/simpleelegant/notes"
+}
