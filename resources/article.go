@@ -239,7 +239,7 @@ func (a *Article) MD5() (contentMD5, diagramMD5 string) {
 
 // ContentHTML convert content which in markdown to HTML
 func (a *Article) ContentHTML() []byte {
-	return blackfriday.Run([]byte(a.Content))
+	return blackfriday.MarkdownCommon([]byte(a.Content))
 }
 
 func initArticleCollection() error {
